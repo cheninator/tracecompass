@@ -7,13 +7,12 @@
  * http://www.eclipse.org/legal/epl-v10.html
  *******************************************************************************/
 
-package org.eclipse.tracecompass.analysis.os.linux.core.tests.latency;
+package org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.trace;
 
 import java.io.IOException;
 
 import org.eclipse.core.runtime.FileLocator;
 import org.eclipse.jdt.annotation.NonNull;
-import org.eclipse.tracecompass.analysis.os.linux.core.tests.stubs.trace.KernelEventLayoutStub;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
 import org.eclipse.tracecompass.testtraces.ctf.CtfTestTrace;
@@ -21,11 +20,27 @@ import org.eclipse.tracecompass.tmf.core.exceptions.TmfTraceException;
 import org.eclipse.tracecompass.tmf.ctf.core.event.CtfTmfEvent;
 import org.eclipse.tracecompass.tmf.ctf.core.trace.CtfTmfTrace;
 
-class KernelCtfTraceStub extends CtfTmfTrace implements IKernelTrace {
+/**
+ * Stub for a generic CTF kernel trace.
+ *
+ * It's basically an LTTng (2.0/2.1) trace, but without depending on o.e.t.lttng2.kernel!
+ */
+public class KernelCtfTraceStub extends CtfTmfTrace implements IKernelTrace {
+
+    /**
+     * Constructor
+     */
     public KernelCtfTraceStub() {
         super();
     }
 
+    /**
+     * Get a trace from a CTF test trace.
+     *
+     * @param ctfTrace
+     *            The CTF test trace
+     * @return The initialized trace
+     */
     public static synchronized KernelCtfTraceStub getTrace(CtfTestTrace ctfTrace) {
         String tracePath;
         try {
