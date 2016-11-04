@@ -67,12 +67,17 @@ public class CtfTmfTraceTrimmingTest {
 
     private final @NonNull CtfTestTrace fTestTrace;
 
-    private CtfTmfTrace fOriginalTrace;
-    private long fRequestedTraceCutStart;
-    private long fRequestedTraceCutEnd;
+    /** Trace on which to perform the trim */
+    protected CtfTmfTrace fOriginalTrace;
+    /** Start time of the trim range */
+    protected long fRequestedTraceCutStart;
+    /** End time of the trim range */
+    protected long fRequestedTraceCutEnd;
 
-    private CtfTmfTrace fNewTrace;
-    private Path fNewTracePath;
+    /** Reference to the newly-created trace */
+    protected CtfTmfTrace fNewTrace;
+    /** Filesystem path of the new trace */
+    protected Path fNewTracePath;
 
     // ------------------------------------------------------------------------
     // Test suite definition
@@ -179,8 +184,13 @@ public class CtfTmfTraceTrimmingTest {
         }
     }
 
-    /** Simulate a trace being opened */
-    private static void openTrace(CtfTmfTrace trace) {
+    /**
+     * Simulate a trace being opened
+     *
+     * @param trace
+     *            The trace to open
+     */
+    protected static void openTrace(CtfTmfTrace trace) {
         trace.indexTrace(true);
         TmfSignalManager.dispatchSignal(new TmfTraceOpenedSignal(CtfTmfTraceTrimmingTest.class, trace, null));
     }
