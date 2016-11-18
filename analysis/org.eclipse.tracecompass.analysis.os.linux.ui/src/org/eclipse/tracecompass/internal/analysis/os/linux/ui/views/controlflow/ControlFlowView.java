@@ -15,6 +15,8 @@
 
 package org.eclipse.tracecompass.internal.analysis.os.linux.ui.views.controlflow;
 
+import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
+
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -43,8 +45,12 @@ import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.MenuManager;
 import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.dialogs.IDialogSettings;
+import org.eclipse.jface.util.IPropertyChangeListener;
+import org.eclipse.jface.util.PropertyChangeEvent;
 import org.eclipse.jface.viewers.ISelection;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.ViewerFilter;
+import org.eclipse.jface.window.Window;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModule;
@@ -54,6 +60,8 @@ import org.eclipse.tracecompass.internal.analysis.os.linux.core.kernel.Attribute
 import org.eclipse.tracecompass.internal.analysis.os.linux.ui.Activator;
 import org.eclipse.tracecompass.internal.analysis.os.linux.ui.Messages;
 import org.eclipse.tracecompass.internal.analysis.os.linux.ui.actions.FollowThreadAction;
+import org.eclipse.tracecompass.internal.analysis.os.linux.ui.views.controlflow.filters.ActiveThreadsFilter;
+import org.eclipse.tracecompass.internal.analysis.os.linux.ui.views.controlflow.filters.DynamicFilterDialog;
 import org.eclipse.tracecompass.statesystem.core.ITmfStateSystem;
 import org.eclipse.tracecompass.statesystem.core.exceptions.AttributeNotFoundException;
 import org.eclipse.tracecompass.statesystem.core.exceptions.StateSystemDisposedException;
@@ -85,7 +93,9 @@ import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.TimeGraphContro
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils.Resolution;
 import org.eclipse.tracecompass.tmf.ui.widgets.timegraph.widgets.Utils.TimeFormat;
+import org.eclipse.ui.PlatformUI;
 
+import com.google.common.base.Objects;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -166,6 +176,46 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
     private IAction fFlatAction;
 
     private IAction fHierarchicalAction;
+
+    private @NonNull ActiveThreadsFilter fActiveThreadsFilter = new ActiveThreadsFilter(null, false);
+
+    private final ActiveThreadsFilterAction fActiveThreadsRapidToggle = new ActiveThreadsFilterAction();
+
+    class ActiveThreadsFilterAction extends Action {
+        public ActiveThreadsFilterAction() {
+            super(PackageMessages.ControlFlowView_DynamicFiltersActiveThreadToggleLabel, IAction.AS_CHECK_BOX);
+            setToolTipText(PackageMessages.ControlFlowView_DynamicFiltersActiveThreadToggleToolTip);
+            addPropertyChangeListener(new IPropertyChangeListener() {
+                @Override
+                public void propertyChange(PropertyChangeEvent event) {
+                    if (!(event.getNewValue() instanceof Boolean)) {
+                        return;
+                    }
+
+                    Boolean enabled = (Boolean) event.getNewValue();
+
+                    /* Always remove the previous Active Threads filter */
+                    getTimeGraphCombo().removeFilter(fActiveThreadsFilter);
+
+                    if (enabled) {
+                        fActiveThreadsFilter.setEnabled(true);
+                        getTimeGraphCombo().addFilter(fActiveThreadsFilter);
+
+                        /* Use flat representation */
+                        if (fFlatAction != null) {
+                            applyFlatPresentation();
+                            fFlatAction.setChecked(true);
+                            fHierarchicalAction.setChecked(false);
+                        }
+                    } else {
+                        fActiveThreadsFilter.setEnabled(false);
+                    }
+
+                    refresh();
+                }
+            });
+        }
+    }
 
     // ------------------------------------------------------------------------
     // Constructors
@@ -264,7 +314,8 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
     @Override
     protected void fillLocalMenu(IMenuManager manager) {
         super.fillLocalMenu(manager);
-        final MenuManager item = new MenuManager(Messages.ControlFlowView_threadPresentation);
+
+        MenuManager item = new MenuManager(Messages.ControlFlowView_threadPresentation);
         fFlatAction = createFlatAction();
         item.add(fFlatAction);
 
@@ -272,7 +323,17 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
         item.add(fHierarchicalAction);
         manager.add(item);
 
+        item = new MenuManager(PackageMessages.ControlFlowView_DynamicFiltersMenuLabel);
+        item.add(fActiveThreadsRapidToggle);
+        item.add(new Separator());
+
+        IAction dynamicFiltersConfigureAction = createDynamicFilterConfigureAction();
+        item.add(dynamicFiltersConfigureAction);
+
+        manager.add(item);
     }
+
+
 
     /**
      * Base Action for the "Go to Next/Previous Event for thread" actions
@@ -352,6 +413,44 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
         }
     }
 
+    private IAction createDynamicFilterConfigureAction() {
+        return new Action(PackageMessages.ControlFlowView_DynamicFiltersConfigureLabel, IAction.AS_PUSH_BUTTON) {
+            @Override
+            public void run() {
+                DynamicFilterDialog dialog = new DynamicFilterDialog(PlatformUI.getWorkbench().getActiveWorkbenchWindow().getShell(), fActiveThreadsFilter);
+                if (dialog.open() == Window.OK) {
+                    /* Remove the previous Active Threads filter */
+                    checkNotNull(getTimeGraphCombo()).removeFilter(fActiveThreadsFilter);
+
+                    ActiveThreadsFilter newFilter = dialog.getActiveThreadsResult();
+                    ActiveThreadsFilter previousFilter = fActiveThreadsFilter;
+
+                    /* Set the filter to the view */
+                    fActiveThreadsFilter = newFilter;
+
+                    boolean enabled = fActiveThreadsFilter.isEnabled();
+                    if (enabled) {
+                        checkNotNull(getTimeGraphCombo()).addFilter(newFilter);
+                    }
+
+                    /*
+                     * Prevent double refresh from change state of setChecked
+                     * and ensure that a refresh is done if the mode of the
+                     * filter is changed or options are changed
+                     */
+                    if (previousFilter.isEnabled() && newFilter.isEnabled()) {
+                        boolean changed = !Objects.equal(previousFilter.getCpuRanges(), newFilter.getCpuRanges()) || previousFilter.isCpuRangesBased() != newFilter.isCpuRangesBased();
+                        if (changed) {
+                            refresh();
+                        }
+                    } else {
+                        fActiveThreadsRapidToggle.setChecked(enabled);
+                    }
+                }
+            }
+        };
+    }
+
     private IAction createHierarchicalAction() {
         IAction action = new Action(Messages.ControlFlowView_hierarchicalViewLabel, IAction.AS_RADIO_BUTTON) {
             @Override
@@ -382,24 +481,29 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
         IAction action = new Action(Messages.ControlFlowView_flatViewLabel, IAction.AS_RADIO_BUTTON) {
             @Override
             public void run() {
-                ITmfTrace parentTrace = getTrace();
-                synchronized (fFlatTraces) {
-                    fFlatTraces.add(parentTrace);
-                    for (ITmfTrace trace : TmfTraceManager.getTraceSet(parentTrace)) {
-                        final ITmfStateSystem ss = TmfStateSystemAnalysisModule.getStateSystem(trace, KernelAnalysisModule.ID);
-                        List<@NonNull TimeGraphEntry> entryList = getEntryList(ss);
-                        if (entryList != null) {
-                            for (TimeGraphEntry traceEntry : entryList) {
-                                hierarchicalToFlatTree(traceEntry);
-                            }
-                        }
-                    }
-                }
+                applyFlatPresentation();
                 refresh();
             }
         };
+        action.setChecked(true);
         action.setToolTipText(Messages.ControlFlowView_flatViewToolTip);
         return action;
+    }
+
+    private void applyFlatPresentation() {
+        ITmfTrace parentTrace = getTrace();
+        synchronized (fFlatTraces) {
+            fFlatTraces.add(parentTrace);
+            for (ITmfTrace trace : TmfTraceManager.getTraceSet(parentTrace)) {
+                final ITmfStateSystem ss = TmfStateSystemAnalysisModule.getStateSystem(trace, KernelAnalysisModule.ID);
+                List<@NonNull TimeGraphEntry> entryList = getEntryList(ss);
+                if (entryList != null) {
+                    for (TimeGraphEntry traceEntry : entryList) {
+                        hierarchicalToFlatTree(traceEntry);
+                    }
+                }
+            }
+        }
     }
 
     @Override
@@ -580,6 +684,8 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
     @Override
     public void traceSelected(TmfTraceSelectedSignal signal) {
         super.traceSelected(signal);
+
+        /* Update the Flat and Hierarchical actions */
         synchronized (fFlatTraces) {
             if (fFlatTraces.contains(signal.getTrace())) {
                 fHierarchicalAction.setChecked(false);
@@ -589,6 +695,21 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
                 fHierarchicalAction.setChecked(true);
             }
         }
+
+        /* Update the Dynamic Filters related actions */
+        ViewerFilter activeThreadFilter = null;
+        ViewerFilter[] traceFilters = getFiltersMap().get(signal.getTrace());
+        if (traceFilters != null) {
+            activeThreadFilter = getActiveThreadsFilter(traceFilters);
+        }
+
+        if (activeThreadFilter == null) {
+            fActiveThreadsFilter = new ActiveThreadsFilter(null, false);
+        } else {
+            fActiveThreadsFilter = (@NonNull ActiveThreadsFilter) checkNotNull(activeThreadFilter);
+        }
+
+        fActiveThreadsRapidToggle.setChecked(fActiveThreadsFilter.isEnabled());
     }
 
     // ------------------------------------------------------------------------
@@ -1053,4 +1174,20 @@ public class ControlFlowView extends AbstractStateSystemTimeGraphView {
         }
         return null;
     }
+
+    private static ActiveThreadsFilter getActiveThreadsFilter(ViewerFilter[] filters) {
+        for (ViewerFilter viewerFilter : filters) {
+            if ((viewerFilter instanceof ActiveThreadsFilter)) {
+                return (ActiveThreadsFilter) viewerFilter;
+            }
+        }
+        return null;
+    }
+
+    @Override
+    protected void updateFilters() {
+        super.updateFilters();
+        fActiveThreadsFilter.updateData();
+    }
+
 }
