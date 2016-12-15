@@ -21,6 +21,7 @@ import java.nio.file.StandardOpenOption;
 import org.eclipse.jdt.annotation.NonNullByDefault;
 import org.eclipse.tracecompass.internal.provisional.datastore.core.historytree.IHistoryTree;
 import org.eclipse.tracecompass.internal.provisional.datastore.core.historytree.classic.ClassicHistoryTree;
+import org.eclipse.tracecompass.internal.statesystem.core.backend.historytree.enhanced.EnhancedHistoryTree;
 
 /**
  * Class that contains factory methods to build different types of history trees
@@ -62,12 +63,11 @@ public final class HistoryTreeFactory {
             int providerVersion,
             long treeStart) throws IOException {
 
-        return new ClassicHistoryTree<>(stateHistoryFile,
+        return new EnhancedHistoryTree(stateHistoryFile,
                 blockSize,
                 maxChildren,
                 providerVersion,
-                treeStart,
-                StateSystemInterval.DESERIALISER);
+                treeStart);
     }
 
     /**
@@ -112,6 +112,8 @@ public final class HistoryTreeFactory {
         case ClassicHistoryTree.HISTORY_FILE_MAGIC_NUMBER:
             return new ClassicHistoryTree<>(existingStateFile.toFile(),
                     expectedProviderVersion, StateSystemInterval.DESERIALISER);
+        case EnhancedHistoryTree.FILE_MAGIC_NUMBER:
+            return new EnhancedHistoryTree(existingStateFile.toFile(), expectedProviderVersion);
         default:
             throw new IOException("Not a known history tree file"); //$NON-NLS-1$
         }
