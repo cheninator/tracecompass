@@ -10,6 +10,8 @@ package org.eclipse.tracecompass.analysis.os.linux.core.kernelmemoryusage;
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
+import java.util.List;
+
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.DefaultEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
@@ -17,6 +19,8 @@ import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelTrace;
 import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * This analysis module creates a stateprovider that keeps track of the memory
@@ -39,6 +43,11 @@ public class KernelMemoryAnalysisModule extends TmfStateSystemAnalysisModule {
      */
     public static final @NonNull String THREAD_LOWEST_MEMORY_VALUE = "lowestMemory"; //$NON-NLS-1$
 
+    private static final List<String> REQUIRED_EVENTS = ImmutableList.of(
+            "kmem_mm_page_alloc", //$NON-NLS-1$
+            "kmem_mm_page_free" //$NON-NLS-1$
+    );
+
     @Override
     protected @NonNull ITmfStateProvider createStateProvider() {
         ITmfTrace trace = checkNotNull(getTrace());
@@ -51,5 +60,13 @@ public class KernelMemoryAnalysisModule extends TmfStateSystemAnalysisModule {
             layout = DefaultEventLayout.getInstance();
         }
         return new KernelMemoryStateProvider(trace, layout);
+    }
+
+    /**
+     * @since 3.0
+     */
+    @Override
+    public List<String> getRequiredEvents() {
+        return REQUIRED_EVENTS;
     }
 }

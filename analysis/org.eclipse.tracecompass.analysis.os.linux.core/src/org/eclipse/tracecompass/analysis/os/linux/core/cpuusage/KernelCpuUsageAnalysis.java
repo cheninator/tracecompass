@@ -46,6 +46,7 @@ import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
 import com.google.common.collect.HashMultimap;
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.SetMultimap;
 
@@ -68,6 +69,8 @@ public class KernelCpuUsageAnalysis extends TmfStateSystemAnalysisModule {
     public static final String TID_ZERO = "0"; //$NON-NLS-1$
 
     /** The requirements as an immutable set */
+    private static final List<String> REQUIRED_EVENTS = ImmutableList.of("sched_switch"); //$NON-NLS-1$
+
     private static final KernelEventLayoutRequirement LAYOUT_REQUIREMENT;
     private static final SetMultimap<IKernelAnalysisEventLayout, TmfAbstractAnalysisRequirement> LAYOUT_REQ_MAP = NonNullUtils.checkNotNull(HashMultimap.create());
 
@@ -330,6 +333,14 @@ public class KernelCpuUsageAnalysis extends TmfStateSystemAnalysisModule {
         } else {
             map.put(key, addTo + value);
         }
+    }
+
+    /**
+     * @since 3.0
+     */
+    @Override
+    public @NonNull List<String> getRequiredEvents() {
+        return REQUIRED_EVENTS;
     }
 
     @Override

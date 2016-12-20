@@ -9,6 +9,8 @@
 
 package org.eclipse.tracecompass.analysis.graph.core.criticalpath;
 
+import java.util.List;
+
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.jdt.annotation.Nullable;
@@ -26,6 +28,8 @@ import org.eclipse.tracecompass.tmf.core.analysis.TmfAbstractAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.exceptions.TmfAnalysisException;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
+
+import com.google.common.collect.ImmutableList;
 
 /**
  * Class to implement the critical path analysis
@@ -45,6 +49,30 @@ public class CriticalPathModule extends TmfAbstractAnalysisModule {
 
     /** Worker_id parameter name */
     public static final String PARAM_WORKER = "workerid"; //$NON-NLS-1$
+
+    private static final List<String> REQUIRED_EVENTS = ImmutableList.of(
+            "lttng_statedump_process_state", //$NON-NLS-1$
+            "sched_switch", //$NON-NLS-1$
+            "sched_process_fork", //$NON-NLS-1$
+            "sched_process_exit", //$NON-NLS-1$
+            "sched_process_exec", //$NON-NLS-1$
+            "irq_softirq_entry", //$NON-NLS-1$
+            "irq_softirq_exit", //$NON-NLS-1$
+            "timer_hrtimer_expire_entry", //$NON-NLS-1$
+            "timer_hrtimer_expire_exit", //$NON-NLS-1$
+            "irq_handler_entry", //$NON-NLS-1$
+            "irq_handler_exit", //$NON-NLS-1$
+            "x86_irq_vectors_*_entry", //$NON-NLS-1$
+            "x86_irq_vectors_*_exit", //$NON-NLS-1$
+            "netif_receive_skb / net_if_receive_skb", //$NON-NLS-1$
+            "net_dev_queue", //$NON-NLS-1$
+            "inet_sock_local_in  (not in mainline LTTng yet)", //$NON-NLS-1$
+            "inet_sock_local_out (not in mainline LTTng yet)", //$NON-NLS-1$
+            "sched_ttwu", //$NON-NLS-1$
+            "sched_waking", //$NON-NLS-1$
+            "sched_wakeup", //$NON-NLS-1$
+            "sched_wakeup_new" //$NON-NLS-1$
+    );
 
     private @Nullable TmfGraphBuilderModule fGraphModule;
 
@@ -200,6 +228,11 @@ public class CriticalPathModule extends TmfAbstractAnalysisModule {
     @Override
     protected @NonNull String getTraceCannotExecuteHelpText(@NonNull ITmfTrace trace) {
         return NonNullUtils.nullToEmptyString(Messages.CriticalPathModule_cantExecute);
+    }
+
+    @Override
+    public @NonNull List<String> getRequiredEvents() {
+        return REQUIRED_EVENTS;
     }
 
 }

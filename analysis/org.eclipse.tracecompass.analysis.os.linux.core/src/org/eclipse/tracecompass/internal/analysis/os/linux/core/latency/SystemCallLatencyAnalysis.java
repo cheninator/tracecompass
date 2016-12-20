@@ -17,6 +17,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -51,6 +52,13 @@ public class SystemCallLatencyAnalysis extends AbstractSegmentStoreAnalysisEvent
 
     private static final String DATA_FILENAME = "latency-analysis.dat"; //$NON-NLS-1$
 
+    private static final List<String> REQUIRED_EVENTS = ImmutableList.of(
+            "syscall_entry_*", //$NON-NLS-1$
+            "compat_syscall_entry_*", //$NON-NLS-1$
+            "syscall_exit_*", //$NON-NLS-1$
+            "compat_syscall_exit_*" //$NON-NLS-1$
+    );
+
     private static final Collection<ISegmentAspect> BASE_ASPECTS =
             ImmutableList.of(SyscallNameAspect.INSTANCE);
 
@@ -70,6 +78,11 @@ public class SystemCallLatencyAnalysis extends AbstractSegmentStoreAnalysisEvent
             return Collections.EMPTY_SET;
         }
         return ImmutableSet.of(module);
+    }
+
+    @Override
+    public @NonNull List<String> getRequiredEvents() {
+        return REQUIRED_EVENTS;
     }
 
     @Override

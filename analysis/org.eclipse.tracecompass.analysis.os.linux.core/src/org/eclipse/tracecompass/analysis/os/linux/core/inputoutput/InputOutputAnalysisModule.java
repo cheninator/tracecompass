@@ -12,8 +12,10 @@ package org.eclipse.tracecompass.analysis.os.linux.core.inputoutput;
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
+import org.eclipse.jdt.annotation.NonNull;
 import org.eclipse.tracecompass.analysis.os.linux.core.kernel.KernelAnalysisModule;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.DefaultEventLayout;
 import org.eclipse.tracecompass.analysis.os.linux.core.trace.IKernelAnalysisEventLayout;
@@ -25,6 +27,8 @@ import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModul
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 import org.eclipse.tracecompass.tmf.core.trace.TmfTraceUtils;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * State System Module for Input Output traces
  *
@@ -34,6 +38,15 @@ public class InputOutputAnalysisModule extends TmfStateSystemAnalysisModule {
 
     /** The ID of this analysis module */
     public static final String ID = "org.eclipse.tracecompass.analysis.os.linux.inputoutput"; //$NON-NLS-1$
+
+    private static final List<String> REQUIRED_EVENTS = ImmutableList.of(
+            "block_rq_insert", //$NON-NLS-1$
+            "block_rq_issue", //$NON-NLS-1$
+            "block_rq_complete", //$NON-NLS-1$
+            "block_bio_frontmerge", //$NON-NLS-1$
+            "block_rq_merge", //$NON-NLS-1$
+            "lttng_statedump_block_device" //$NON-NLS-1$
+    );
 
     @Override
     protected ITmfStateProvider createStateProvider() {
@@ -74,6 +87,11 @@ public class InputOutputAnalysisModule extends TmfStateSystemAnalysisModule {
             break;
         }
         return modules;
+    }
+
+    @Override
+    public @NonNull List<String> getRequiredEvents() {
+        return REQUIRED_EVENTS;
     }
 
 }

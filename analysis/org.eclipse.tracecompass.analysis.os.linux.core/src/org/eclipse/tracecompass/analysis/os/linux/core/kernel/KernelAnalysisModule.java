@@ -16,6 +16,7 @@ package org.eclipse.tracecompass.analysis.os.linux.core.kernel;
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 
 import java.util.Collections;
+import java.util.List;
 import java.util.Set;
 
 import org.eclipse.jdt.annotation.NonNull;
@@ -29,6 +30,8 @@ import org.eclipse.tracecompass.tmf.core.statesystem.ITmfStateProvider;
 import org.eclipse.tracecompass.tmf.core.statesystem.TmfStateSystemAnalysisModule;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
 
+import com.google.common.collect.ImmutableList;
+
 /**
  * State System Module for lttng kernel traces
  *
@@ -39,6 +42,29 @@ public class KernelAnalysisModule extends TmfStateSystemAnalysisModule {
 
     /** The ID of this analysis module */
     public static final String ID = "org.eclipse.tracecompass.analysis.os.linux.kernel"; //$NON-NLS-1$
+
+    private static final List<String> REQUIRED_EVENTS = ImmutableList.of(
+            "irq_handler_entry", //$NON-NLS-1$
+            "irq_handler_exit", //$NON-NLS-1$
+            "irq_softirq_entry", //$NON-NLS-1$
+            "irq_softirq_exit", //$NON-NLS-1$
+            "irq_softirq_raise", //$NON-NLS-1$
+            "sched_switch", //$NON-NLS-1$
+            "sched_pi_setprio", //$NON-NLS-1$
+            "sched_process_fork", //$NON-NLS-1$
+            "sched_process_exit", //$NON-NLS-1$
+            "sched_process_free", //$NON-NLS-1$
+            "sched_waking", //$NON-NLS-1$
+            "x86_irq_vectors_*_entry", //$NON-NLS-1$
+            "x86_irq_vectors_*_exit", //$NON-NLS-1$
+            "lttng_statedump_process_state", //$NON-NLS-1$
+            "sched_wakeup", //$NON-NLS-1$
+            "sched_wakeup_new", //$NON-NLS-1$
+            "syscall_entry_*", //$NON-NLS-1$
+            "compat_syscall_entry_*", //$NON-NLS-1$
+            "syscall_exit_*", //$NON-NLS-1$
+            "compat_syscall_exit_*" //$NON-NLS-1$
+    );
 
     /*
      * TODO: Decide which events should be mandatory for the analysis, once the
@@ -100,6 +126,14 @@ public class KernelAnalysisModule extends TmfStateSystemAnalysisModule {
     @Override
     protected String getGenericHelpText() {
         return NonNullUtils.nullToEmptyString(Messages.LttngKernelAnalysisModule_Help);
+    }
+
+    /**
+     * @since 3.0
+     */
+    @Override
+    public @NonNull List<String> getRequiredEvents() {
+        return REQUIRED_EVENTS;
     }
 
     @Override
