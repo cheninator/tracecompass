@@ -17,6 +17,7 @@ import org.eclipse.osgi.util.NLS;
  * Message bundle for org.eclipse.tracecompass.tmf.core.analysis
  *
  * @author Geneviève Bastien
+ * @noreference Message class
  */
 public class Messages extends NLS {
     private static final String BUNDLE_NAME = "org.eclipse.tracecompass.tmf.core.analysis.messages"; //$NON-NLS-1$
@@ -54,6 +55,9 @@ public class Messages extends NLS {
 
     /** A requirement is not fulfilled */
     public static String TmfAnalysis_RequirementNotFulfilled;
+
+    /** Header for the "required events" section of analysis help message */
+    public static String TmfAnalysis_RequiredEvents;
 
     /** Running analysis */
     public static String TmfAbstractAnalysisModule_RunningAnalysis;

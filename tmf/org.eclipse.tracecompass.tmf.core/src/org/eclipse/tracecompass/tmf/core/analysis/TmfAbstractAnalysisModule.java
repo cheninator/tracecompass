@@ -507,6 +507,19 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
     }
 
     /**
+     * List the required events for this particular analysis. It can be names of
+     * "concepts" (like "system call entry/exit events") or specific event
+     * names, anything to help the user figure out what needs to be present in
+     * their trace for the analysis to work.
+     *
+     * @return The list of event names (will be displayed one element per line)
+     * @since 3.0
+     */
+    protected @Nullable List<String> getRequiredEvents() {
+        return null;
+    }
+
+    /**
      * Gets the help text specific for a trace who does not have required
      * characteristics for module to execute. The default implementation uses
      * the analysis requirements.
@@ -536,13 +549,23 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
 
     @Override
     public final String getHelpText() {
-        return getGenericHelpText();
+        StringBuilder sb = new StringBuilder();
+        sb.append(getGenericHelpText());
+
+        List<String> requiredEvents = getRequiredEvents();
+        if (requiredEvents != null && !requiredEvents.isEmpty()) {
+            sb.append("\n\n"); //$NON-NLS-1$
+            sb.append(Messages.TmfAnalysis_RequiredEvents).append('\n');
+            requiredEvents.forEach(e -> sb.append("  " + e + '\n')); //$NON-NLS-1$
+        }
+
+        return sb.toString();
     }
 
     @Override
     public final String getHelpText(ITmfTrace trace) {
         StringBuilder sb = new StringBuilder();
-        sb.append(getGenericHelpText());
+        sb.append(getHelpText());
 
         String specificText = getTraceSpecificHelpText(trace);
         if (specificText != null && !specificText.isEmpty()) {
