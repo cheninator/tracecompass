@@ -9,6 +9,8 @@
 
 package org.eclipse.tracecompass.internal.analysis.timing.core.callgraph;
 
+import static org.eclipse.tracecompass.common.core.NonNullUtils.nullToEmptyString;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -102,14 +104,13 @@ public abstract class CallGraphAnalysis extends TmfAbstractAnalysisModule implem
     }
 
     @Override
-    public @NonNull String getHelpText() {
-        String msg = Messages.CallGraphAnalysis_Description;
-        return (msg != null) ? msg : super.getHelpText();
+    public @NonNull String getGenericHelpText() {
+        return nullToEmptyString(Messages.CallGraphAnalysis_Description);
     }
 
     @Override
-    public @NonNull String getHelpText(@NonNull ITmfTrace trace) {
-        return getHelpText();
+    public @NonNull String getTraceSpecificHelpText(@NonNull ITmfTrace trace) {
+        return ""; //$NON-NLS-1$
     }
 
     @Override

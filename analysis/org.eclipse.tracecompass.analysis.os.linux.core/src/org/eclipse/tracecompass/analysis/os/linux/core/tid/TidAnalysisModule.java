@@ -10,6 +10,7 @@
 package org.eclipse.tracecompass.analysis.os.linux.core.tid;
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
+import static org.eclipse.tracecompass.common.core.NonNullUtils.nullToEmptyString;
 
 import java.util.Collections;
 import java.util.Set;
@@ -58,14 +59,8 @@ public class TidAnalysisModule extends TmfStateSystemAnalysisModule {
     }
 
     @Override
-    public String getHelpText() {
-        String msg = Messages.TidAnalysisModule_Description;
-        return msg != null ? msg : super.getHelpText();
-    }
-
-    @Override
-    public @NonNull String getHelpText(@NonNull ITmfTrace trace) {
-        return getHelpText();
+    public String getGenericHelpText() {
+        return nullToEmptyString(Messages.TidAnalysisModule_Description);
     }
 
     @Override

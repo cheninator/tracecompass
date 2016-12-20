@@ -87,7 +87,7 @@ public class VirtualMachineCpuAnalysis extends TmfStateSystemAnalysisModule {
     }
 
     @Override
-    public String getHelpText() {
+    public String getGenericHelpText() {
         return Messages.getMessage(Messages.VirtualMachineCPUAnalysis_Help);
     }
 

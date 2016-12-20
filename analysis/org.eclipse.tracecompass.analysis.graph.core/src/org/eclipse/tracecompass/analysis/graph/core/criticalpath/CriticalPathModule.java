@@ -193,13 +193,8 @@ public class CriticalPathModule extends TmfAbstractAnalysisModule {
     }
 
     @Override
-    protected @NonNull String getFullHelpText() {
+    protected @NonNull String getGenericHelpText() {
         return NonNullUtils.nullToEmptyString(Messages.CriticalPathModule_fullHelpText);
-    }
-
-    @Override
-    protected @NonNull String getShortHelpText(ITmfTrace trace) {
-        return getFullHelpText();
     }
 
     @Override

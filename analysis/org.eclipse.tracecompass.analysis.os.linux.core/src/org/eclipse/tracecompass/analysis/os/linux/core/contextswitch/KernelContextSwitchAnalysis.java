@@ -13,6 +13,7 @@
 package org.eclipse.tracecompass.analysis.os.linux.core.contextswitch;
 
 import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
+import static org.eclipse.tracecompass.common.core.NonNullUtils.nullToEmptyString;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,14 +61,8 @@ public class KernelContextSwitchAnalysis extends TmfStateSystemAnalysisModule {
     public static final Integer TOTAL = -1;
 
     @Override
-    public @NonNull String getHelpText() {
-        String msg = Messages.KernelContextSwitchAnalysis_Description;
-        return msg != null ? msg : super.getHelpText();
-    }
-
-    @Override
-    public @NonNull String getHelpText(@NonNull ITmfTrace trace) {
-        return getHelpText();
+    public @NonNull String getGenericHelpText() {
+        return nullToEmptyString(Messages.KernelContextSwitchAnalysis_Description);
     }
 
     @Override

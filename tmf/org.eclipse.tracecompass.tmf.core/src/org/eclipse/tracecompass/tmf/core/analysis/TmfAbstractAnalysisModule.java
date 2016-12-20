@@ -483,8 +483,9 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
      * Returns a full help text to display
      *
      * @return Full help text for the module
+     * @since 3.0
      */
-    protected String getFullHelpText() {
+    protected String getGenericHelpText() {
         return NonNullUtils.nullToEmptyString(NLS.bind(
                 Messages.TmfAbstractAnalysisModule_AnalysisModule,
                 getName()));
@@ -497,8 +498,9 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
      *            The trace to show help for
      *
      * @return Short help text describing the module
+     * @since 3.0
      */
-    protected String getShortHelpText(ITmfTrace trace) {
+    protected @Nullable String getTraceSpecificHelpText(ITmfTrace trace) {
         return NonNullUtils.nullToEmptyString(NLS.bind(
                 Messages.TmfAbstractAnalysisModule_AnalysisForTrace,
                 getName(), trace.getName()));
@@ -533,17 +535,27 @@ public abstract class TmfAbstractAnalysisModule extends TmfComponent
     }
 
     @Override
-    public String getHelpText() {
-        return getFullHelpText();
+    public final String getHelpText() {
+        return getGenericHelpText();
     }
 
     @Override
-    public String getHelpText(ITmfTrace trace) {
-        String text = getShortHelpText(trace);
-        if (!canExecute(trace)) {
-            text = text + "\n\n" + getTraceCannotExecuteHelpText(trace); //$NON-NLS-1$
+    public final String getHelpText(ITmfTrace trace) {
+        StringBuilder sb = new StringBuilder();
+        sb.append(getGenericHelpText());
+
+        String specificText = getTraceSpecificHelpText(trace);
+        if (specificText != null && !specificText.isEmpty()) {
+            sb.append("\n\n"); //$NON-NLS-1$
+            sb.append(specificText);
         }
-        return text;
+
+        if (!canExecute(trace)) {
+            sb.append("\n\n"); //$NON-NLS-1$
+            sb.append(getTraceCannotExecuteHelpText(trace));
+        }
+
+        return sb.toString();
     }
 
     @Override

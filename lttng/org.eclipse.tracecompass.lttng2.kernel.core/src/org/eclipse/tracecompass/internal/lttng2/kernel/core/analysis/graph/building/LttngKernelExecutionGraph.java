@@ -45,16 +45,6 @@ public class LttngKernelExecutionGraph extends TmfGraphBuilderModule {
     }
 
     @Override
-    protected String getFullHelpText() {
-        return super.getFullHelpText();
-    }
-
-    @Override
-    protected String getShortHelpText(ITmfTrace trace) {
-        return super.getShortHelpText(trace);
-    }
-
-    @Override
     protected String getTraceCannotExecuteHelpText(ITmfTrace trace) {
         return "The trace must have events 'sched_switch' and 'sched_wakeup' enabled"; //$NON-NLS-1$
     }

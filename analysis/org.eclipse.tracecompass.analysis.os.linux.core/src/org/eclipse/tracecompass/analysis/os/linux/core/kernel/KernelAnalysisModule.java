@@ -98,7 +98,7 @@ public class KernelAnalysisModule extends TmfStateSystemAnalysisModule {
     }
 
     @Override
-    protected String getFullHelpText() {
+    protected String getGenericHelpText() {
         return NonNullUtils.nullToEmptyString(Messages.LttngKernelAnalysisModule_Help);
     }
 

@@ -90,11 +90,27 @@ public class TmfAnalysisModuleHelperConfigElement implements IAnalysisModuleHelp
 
     @Override
     public String getHelpText() {
-        /*
-         * FIXME: No need to externalize this. A better solution will be found
-         * soon and this string is just temporary
-         */
-        return "The trace must be opened to get the help message"; //$NON-NLS-1$
+        IAnalysisModule module = createModule();
+        if (module != null) {
+            String ret = module.getHelpText();
+            module.dispose();
+            return ret;
+        }
+
+        return "Error getting the analysis's help message."; //$NON-NLS-1$
+    }
+
+
+    @Override
+    public String getHelpText(@NonNull ITmfTrace trace) {
+        IAnalysisModule module = createModule();
+        if (module != null) {
+            String ret = module.getHelpText(trace);
+            module.dispose();
+            return ret;
+        }
+        return getHelpText();
+
     }
 
     @Override
@@ -244,15 +260,4 @@ public class TmfAnalysisModuleHelperConfigElement implements IAnalysisModuleHelp
 
     }
 
-    @Override
-    public String getHelpText(@NonNull ITmfTrace trace) {
-        IAnalysisModule module = createModule();
-        if (module != null) {
-            String ret = module.getHelpText(trace);
-            module.dispose();
-            return ret;
-        }
-        return getHelpText();
-
-    }
 }
