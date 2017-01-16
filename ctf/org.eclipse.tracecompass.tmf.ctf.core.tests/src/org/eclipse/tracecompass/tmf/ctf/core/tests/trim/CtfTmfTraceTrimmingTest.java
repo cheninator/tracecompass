@@ -84,6 +84,16 @@ public class CtfTmfTraceTrimmingTest {
     // ------------------------------------------------------------------------
 
     private static final Set<CtfTestTrace> BLACKLISTED_TRACES = ImmutableSet.of(
+            // TEMP, we know these work
+            CtfTestTrace.KERNEL,
+            CtfTestTrace.TRACE2,
+            CtfTestTrace.KERNEL_VM,
+            CtfTestTrace.SYNC_SRC,
+            CtfTestTrace.SYNC_DEST,
+            CtfTestTrace.DJANGO_CLIENT,
+            CtfTestTrace.DJANGO_DB,
+            CtfTestTrace.DJANGO_HTTPD,
+
             /* Trimming doesn't work on experiments at the moment */
             CtfTestTrace.TRACE_EXPERIMENT
             );
