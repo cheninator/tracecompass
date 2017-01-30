@@ -16,6 +16,11 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Plugin;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jdt.annotation.Nullable;
+import org.eclipse.tracecompass.internal.analysis.os.linux.core.views.controlflow2.ControlFlowRenderProvider;
+import org.eclipse.tracecompass.internal.provisional.tmf.core.views.json.TimeGraphJsonOutput;
+import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.control.TimeGraphModelControl;
+import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.provider.ITimeGraphModelRenderProvider;
+import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.view.TimeGraphModelView;
 import org.osgi.framework.BundleContext;
 
 /**
@@ -38,6 +43,8 @@ public class Activator extends Plugin {
      * The shared instance
      */
     private static @Nullable Activator fPlugin;
+
+    private @Nullable TimeGraphModelControl fTimeGraphModelControl;
 
     // ------------------------------------------------------------------------
     // Constructors
@@ -74,12 +81,23 @@ public class Activator extends Plugin {
     public void start(@Nullable BundleContext context) throws Exception {
         super.start(context);
         fPlugin = this;
+
+        /* Example time graph JSON output view */
+        ITimeGraphModelRenderProvider provider = new ControlFlowRenderProvider();
+        TimeGraphModelControl control = new TimeGraphModelControl(provider);
+        TimeGraphModelView view = new TimeGraphJsonOutput(control);
+        control.attachViewer(view);
+        fTimeGraphModelControl = control;
     }
 
     @Override
     public void stop(@Nullable BundleContext context) throws Exception {
         fPlugin = null;
         super.stop(context);
+
+        if (fTimeGraphModelControl != null) {
+            fTimeGraphModelControl.dispose();
+        }
     }
 
     /**
