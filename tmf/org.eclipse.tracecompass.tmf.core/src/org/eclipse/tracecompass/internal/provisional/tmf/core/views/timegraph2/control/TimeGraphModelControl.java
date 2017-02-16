@@ -65,6 +65,14 @@ public final class TimeGraphModelControl {
         return fFullTimeGraphEndTime;
     }
 
+    public long getVisibleTimeRangeStart() {
+        return fLatestVisibleRangeStartTime;
+    }
+
+    public long getVisibleTimeRangeEnd() {
+        return fLatestVisibleRangeEndTime;
+    }
+
     public ITimeGraphModelRenderProvider getModelRenderProvider() {
         return fRenderProvider;
     }
@@ -110,8 +118,8 @@ public final class TimeGraphModelControl {
     void seekVisibleRange(long visibleWindowStartTime, long visibleWindowEndTime) {
         checkWindowTimeRange(visibleWindowStartTime, visibleWindowEndTime);
 
-        fViewers.forEach(viewer -> viewer.seekVisibleRange(visibleWindowStartTime, visibleWindowEndTime));
         updateLatestVisibleRange(visibleWindowStartTime, visibleWindowEndTime);
+        fViewers.forEach(viewer -> viewer.seekVisibleRange(visibleWindowStartTime, visibleWindowEndTime));
     }
 
     void drawSelection(long selectionStartTime, long selectionEndTime) {

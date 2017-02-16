@@ -19,7 +19,8 @@ import javafx.concurrent.Task;
 
 public class LatestTaskExecutor {
 
-    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
+    private static final ExecutorService EXECUTOR = Executors.newFixedThreadPool(2);
+//    private static final ExecutorService EXECUTOR = Executors.newSingleThreadExecutor();
 
     /**
      * The latest job that was schedule in this queue.
@@ -36,7 +37,7 @@ public class LatestTaskExecutor {
              * Cancel the existing task. Here's hoping it cooperates and ends
              * quickly!
              */
-            latestJob.cancel(true);
+            latestJob.cancel(false);
         }
 
         /* Start the new job */

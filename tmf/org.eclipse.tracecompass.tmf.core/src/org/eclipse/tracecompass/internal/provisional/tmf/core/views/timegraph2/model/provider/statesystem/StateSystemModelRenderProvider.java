@@ -202,6 +202,7 @@ public class StateSystemModelRenderProvider extends TimeGraphModelRenderProvider
             intervals = StateSystemUtils.queryHistoryRange(ss, treeElem.getSourceQuark(), rangeStart, rangeEnd, resolution, null);
         } catch (AttributeNotFoundException | StateSystemDisposedException e) {
             intervals = Collections.emptyList();
+            e.printStackTrace();
         }
 
         List<TimeGraphStateInterval> stateIntervals = intervals.stream()
@@ -211,6 +212,7 @@ public class StateSystemModelRenderProvider extends TimeGraphModelRenderProvider
                         fullState = ss.queryFullState(interval.getStartTime());
                     } catch (StateSystemDisposedException e) {
                         fullState = Collections.emptyList();
+                        e.printStackTrace();
                     }
                     return new StateIntervalContext(ss, treeElem, interval, fullState);
                 })

@@ -14,8 +14,11 @@ import static org.eclipse.tracecompass.common.core.NonNullUtils.checkNotNull;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Set;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.stream.Collectors;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -29,7 +32,7 @@ import org.eclipse.swt.widgets.Composite;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.control.TimeGraphModelControl;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.provider.ITimeGraphModelRenderProvider;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.render.states.TimeGraphStateInterval;
-import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.render.states.TimeGraphStateRender;
+import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.render.tree.TimeGraphTreeElement;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.render.tree.TimeGraphTreeRender;
 import org.eclipse.tracecompass.internal.provisional.tmf.core.views.timegraph2.model.view.TimeGraphModelView;
 import org.eclipse.tracecompass.tmf.core.trace.ITmfTrace;
@@ -43,7 +46,6 @@ import javafx.beans.value.ChangeListener;
 import javafx.concurrent.Task;
 import javafx.embed.swt.FXCanvas;
 import javafx.event.EventHandler;
-import javafx.geometry.Bounds;
 import javafx.geometry.Insets;
 import javafx.scene.Group;
 import javafx.scene.Node;
@@ -105,6 +107,19 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
 
     private static final int LABEL_SIDE_MARGIN = 10;
 
+    /**
+     * Height of individual entries (text + states), including padding.
+     *
+     * TODO Make this configurable (vertical zoom feature)
+     */
+    private static final double ENTRY_HEIGHT = 20;
+
+    /** Number of tree elements to print above *and* below the visible range */
+    private static final int ENTRY_PREFETCHING = 5;
+
+    /** Time between UI updates, in milliseconds */
+    private static final int UI_UPDATE_DELAY = 250;
+
     // ------------------------------------------------------------------------
     // Class fields
     // ------------------------------------------------------------------------
@@ -135,17 +150,55 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
     private final Rectangle fSelectionRect;
     private final Rectangle fOngoingSelectionRect;
 
-    /**
-     * Height of individual entries (text + states), including padding.
-     *
-     * TODO Make this configurable (vertical zoom feature)
-     */
-    private static final double ENTRY_HEIGHT = 20;
 
+    private static class VerticalPosition {
+        public double fTopPos = 0.0;
+        public double fBottomPos = 0.0;
+        public double fContentHeight = 0.0;
+    }
+    private final VerticalPosition fVerticalPosition = new VerticalPosition();
+
+    private final Timer fUiUpdateTimer = new Timer();
+    private final TimerTask fUiUpdateTimerTask = new TimerTask() {
+
+        // TODO Condense into one (or 2) convenience classes ?
+        private long fPreviousStartTime = getControl().getVisibleTimeRangeStart();
+        private long fPreviousEndTime = getControl().getVisibleTimeRangeEnd();
+        private double fPreviousTopPos = fVerticalPosition.fTopPos;
+        private double fPreviousBottomPos = fVerticalPosition.fBottomPos;
+        private double fPreviousContentHeight = fVerticalPosition.fContentHeight;
+
+        @Override
+        public void run() {
+            long start = getControl().getVisibleTimeRangeStart();
+            long end = getControl().getVisibleTimeRangeEnd();
+            double topPos = fVerticalPosition.fTopPos;
+            double bottomPos = fVerticalPosition.fBottomPos;
+            double contentHeight = fVerticalPosition.fContentHeight;
+
+            if (start == fPreviousStartTime
+                    && end == fPreviousEndTime
+                    && topPos == fPreviousTopPos
+                    && bottomPos == fPreviousBottomPos
+                    && contentHeight == fPreviousContentHeight) {
+                /*
+                 * Exact same position as the last one we've seen, no need to
+                 * repaint.
+                 */
+                return;
+            }
+            fPreviousStartTime = start;
+            fPreviousEndTime = end;
+            fPreviousTopPos = topPos;
+            fPreviousBottomPos = bottomPos;
+            fPreviousContentHeight = contentHeight;
+
+            paintArea(start, end);
+        }
+    };
 
     /** Current zoom level */
     private double fNanosPerPixel = 1.0;
-
 
     /**
      * Constructor
@@ -222,6 +275,7 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
         fTimeGraphScrollPane.setOnMouseEntered(fScrollingCtx.fMouseEnteredEventHandler);
         fTimeGraphScrollPane.setOnMouseExited(fScrollingCtx.fMouseExitedEventHandler);
         fTimeGraphScrollPane.hvalueProperty().addListener(fScrollingCtx.fHScrollChangeListener);
+        fTimeGraphScrollPane.vvalueProperty().addListener(fScrollingCtx.fVScrollChangeListener);
 
         /* Synchronize the two scrollpanes' vertical scroll bars together */
         fTreeScrollPane.vvalueProperty().bindBidirectional(fTimeGraphScrollPane.vvalueProperty());
@@ -238,6 +292,8 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
          */
         ITmfTrace trace = TmfTraceManager.getInstance().getActiveTrace();
         getControl().initializeForTrace(trace);
+
+        fUiUpdateTimer.schedule(fUiUpdateTimerTask, UI_UPDATE_DELAY, UI_UPDATE_DELAY);
     }
 
     // ------------------------------------------------------------------------
@@ -260,6 +316,8 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
 
     @Override
     public void disposeImpl() {
+        fUiUpdateTimer.cancel();
+        fUiUpdateTimer.purge();
     }
 
     @Override
@@ -298,8 +356,6 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
 
         fTimeGraphPane.setPrefWidth(timeGraphAreaWidth);
         fTimeGraphScrollPane.setHvalue(newValue);
-
-        paintArea(visibleWindowStartTime, visibleWindowEndTime);
     }
 
     private void paintArea(long windowStartTime, long windowEndTime) {
@@ -332,21 +388,28 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
             return;
         }
 
-        /* Get visible bounds */
-        Bounds paneBounds = fTimeGraphScrollPane.localToScene(fTimeGraphScrollPane.getBoundsInParent());
-        System.out.println("Visible X bounds: " + paneBounds.getMinX() + ", " + paneBounds.getMaxX());
-
-
-        Bounds bounds = fTimeGraphScrollPane.getViewportBounds();
-        long minX = -1 * (long) bounds.getMinX();
-        long maxX = -1* (long) bounds.getMaxX();
-        System.out.println("Visible X bounds: " + minX + "-" + maxX);
+        final VerticalPosition vertical = fVerticalPosition;
 
         Task<@Nullable Void> task = new Task<@Nullable Void>() {
             @Override
             protected @Nullable Void call() {
                 ITimeGraphModelRenderProvider renderProvider = getControl().getModelRenderProvider();
                 TimeGraphTreeRender treeRender = renderProvider.getTreeRender(windowStartTime, windowEndTime);
+                final List<TimeGraphTreeElement> allTreeElements = treeRender.getAllTreeElements();
+
+                if (isCancelled()) {
+                    System.err.println("job was cancelled before generating the states");
+                    return null;
+                }
+
+                final int nbElements = allTreeElements.size();
+
+                int topEntry = Math.max(0,
+                        paneYPosToEntryListIndex(vertical.fTopPos, vertical.fContentHeight, nbElements) - ENTRY_PREFETCHING);
+                int bottomEntry = Math.min(nbElements,
+                        paneYPosToEntryListIndex(vertical.fBottomPos, vertical.fContentHeight, nbElements) + ENTRY_PREFETCHING);
+
+                System.out.println("topEntry=" + topEntry +", bottomEntry=" + bottomEntry);
 
                 /*
                  * Get the vertical "slices" of state renders.
@@ -354,29 +417,40 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
                  * FIXME iterate/peek/allMatch can be replaced by the more
                  * intuitive iterate/takeWhile/map/collect with Java 9.
                  */
-                List<List<TimeGraphStateRender>> stateRenders = new ArrayList<>();
+                Collection<TimeGraphAreaRender> areaRenders = new LinkedList<>();
                 LongStream
                         .iterate(renderingStartTime, i -> i + renderTimeRange)
                         .peek(renderStart -> {
-                            long renderEnd = Math.min(renderStart + renderTimeRange, renderingEndTime);
+                            final long renderEnd = Math.min(renderStart + renderTimeRange, renderingEndTime);
+
+                            if (isCancelled()) {
+                                System.err.println("rendering job unit cancelled");
+                                return;
+                            }
 
                             System.out.printf("requesting render from %,d to %,d, resolution=%d%n",
                                     renderStart, renderEnd, resolution);
 
-                            List<TimeGraphStateRender> render = renderProvider.getStateRenders(treeRender, resolution);
-                            stateRenders.add(render);
+                            TimeGraphAreaRender areaRender = TimeGraphAreaRender.getFromProvider(renderProvider, treeRender,
+                                    renderStart, renderEnd, resolution, topEntry, bottomEntry);
+
+                            areaRenders.add(areaRender);
                         })
-                        .allMatch(i -> i <= renderingEndTime);
+                        .allMatch(i -> ((i + renderTimeRange) <= renderingEndTime));
+
+                if (isCancelled()) {
+                    System.err.println("job was cancelled before generating the contents");
+                    return null;
+                }
 
                 /* Prepare the tree part */
                 Node treeContents = prepareTreeContents(treeRender, treePaneWidth);
 
                 /* Prepare the time graph part */
-                Node timeGraphContents = prepareTimeGraphContents(stateRenders);
+                Node timeGraphContents = prepareTimeGraphContents(areaRenders);
 
-                if (Thread.currentThread().isInterrupted()) {
-                    /* Task was cancelled, no need to update the UI */
-                    System.out.println("job was cancelled before it could end");
+                if (isCancelled()) {
+                    System.err.println("job was cancelled before updating the view");
                     return null;
                 }
 
@@ -459,10 +533,10 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
     // Methods related to the Time Graph area
     // ------------------------------------------------------------------------
 
-    private Node prepareTimeGraphContents(List<List<TimeGraphStateRender>> renders) {
+    private Node prepareTimeGraphContents(Collection<TimeGraphAreaRender> renders) {
         Set<Node> canvases = renders.stream()
                 .parallel() // order doesn't matter here
-                .flatMap(render -> getCanvasesForRender(render).stream())
+                .flatMap(render -> getCanvasesForAreaRender(render).stream())
                 .collect(Collectors.toSet());
 
         return new Group(canvases);
@@ -477,8 +551,8 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
      *            The render
      * @return The vertical set of canvases
      */
-    private Collection<Canvas> getCanvasesForRender(List<TimeGraphStateRender> render) {
-        List<List<TimeGraphStateInterval>> stateIntervals = render.stream()
+    private Collection<Canvas> getCanvasesForAreaRender(TimeGraphAreaRender areaRender) {
+        List<List<TimeGraphStateInterval>> stateIntervals = areaRender.getStateRenders().stream()
                 .map(stateRender -> stateRender.getStateIntervals())
                 .collect(Collectors.toList());
 
@@ -487,8 +561,8 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
         }
 
         /* The canvas will be put on the Pane at this offset */
-        final double xOffset = timestampToPaneXPos(render.get(0).getStartTime());
-        final double xEnd = timestampToPaneXPos(render.get(0).getEndTime());
+        final double xOffset = timestampToPaneXPos(areaRender.getStartTime());
+        final double xEnd = timestampToPaneXPos(areaRender.getEndTime());
         final double canvasWidth = xEnd - xOffset;
         final int maxEntriesPerCanvas = (int) (MAX_CANVAS_HEIGHT / ENTRY_HEIGHT);
 
@@ -497,7 +571,7 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
          * one Canvas per partition.
          */
         List<Canvas> canvases = new ArrayList<>();
-        double yOffset = 0;
+        double yOffset = areaRender.getFirstEntryIndex() * ENTRY_HEIGHT;
         List<List<List<TimeGraphStateInterval>>> partitionedIntervals =
                 Lists.partition(stateIntervals, maxEntriesPerCanvas);
         for (int i = 0; i < partitionedIntervals.size(); i++) {
@@ -664,20 +738,21 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
         /**
          * Listener for the horizontal scrollbar changes
          */
-        private final ChangeListener<Object> fHScrollChangeListener = (observable, oldValue, newValue) -> {
+        private final ChangeListener<Number> fHScrollChangeListener = (observable, oldValue, newValue) -> {
             if (!fUserActionOngoing) {
-                System.out.println("Listener triggered but inactive");
+                System.out.println("HScroll listener triggered but inactive");
                 return;
             }
 
-            System.out.println("Change listener triggered, oldval=" + oldValue.toString() + ", newval=" + newValue.toString());
+            System.out.println("HScroll change listener triggered, oldval=" + oldValue.toString() + ", newval=" + newValue.toString());
 
             /*
              * Determine the X position represented by the left edge of the pane
              */
             double hmin = fTimeGraphScrollPane.getHmin();
             double hmax = fTimeGraphScrollPane.getHmax();
-            double hvalue = fTimeGraphScrollPane.getHvalue();
+            /* scrollPane.getHvalue() would return the *old* value here! */
+            double hvalue = newValue.doubleValue();
             double contentWidth = fTimeGraphPane.getLayoutBounds().getWidth();
             double viewportWidth = fTimeGraphScrollPane.getViewportBounds().getWidth();
             double hoffset = Math.max(0, contentWidth - viewportWidth) * (hvalue - hmin) / (hmax - hmin);
@@ -695,11 +770,33 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
             getControl().updateVisibleTimeRange(tsStart, tsEnd);
 
             /*
-             * The control will not send its own signal back to us (to avoid
-             * jitter while scrolling). We will however refresh the area to
-             * paint ourselves
+             * The control will not send thisn signal back to us (to avoid
+             * jitter while scrolling), but the next UI update should refresh
+             * the view accordingly.
              */
-            paintArea(tsStart, tsEnd);
+        };
+
+        private final ChangeListener<Number> fVScrollChangeListener = (observable, oldValue, newValue) -> {
+            if (!fUserActionOngoing) {
+                System.out.println("HScroll listener triggered but inactive");
+                return;
+            }
+
+            /* Get the Y position of the top/bottom edges of the pane */
+            double vmin = fTreeScrollPane.getVmin();
+            double vmax = fTreeScrollPane.getVmax();
+            double vvalue = newValue.doubleValue();
+            double contentHeight = fTreePane.getLayoutBounds().getHeight();
+            double viewportHeight = fTreeScrollPane.getViewportBounds().getHeight();
+
+            double vtop = Math.max(0, contentHeight - viewportHeight) * (vvalue - vmin) / (vmax - vmin);
+            double vbottom = vtop + viewportHeight;
+
+            fVerticalPosition.fTopPos = vtop;
+            fVerticalPosition.fBottomPos = vbottom;
+            fVerticalPosition.fContentHeight = contentHeight;
+
+            /* Next UI update will take these coordinates in consideration */
         };
     }
 
@@ -711,16 +808,17 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
         double width = canvas.getWidth();
         int nbLines = (int) (canvas.getHeight() / entryHeight);
 
-
         GraphicsContext gc = canvas.getGraphicsContext2D();
         gc.save();
 
         gc.setStroke(BACKGROUD_LINES_COLOR);
         gc.setLineWidth(1);
         /* average+2 gives the best-looking output */
-        DoubleStream.iterate((ENTRY_HEIGHT / 2) + 2, i -> i + entryHeight).limit(nbLines).forEach(yPos -> {
-            gc.strokeLine(0, yPos, width, yPos);
-        });
+        DoubleStream.iterate((ENTRY_HEIGHT / 2) + 2, i -> i + entryHeight)
+                .limit(nbLines)
+                .forEach(yPos -> {
+                    gc.strokeLine(0, yPos, width, yPos);
+                });
 
         gc.restore();
     }
@@ -763,4 +861,8 @@ public class SwtJfxTimeGraphViewer extends TimeGraphModelView {
         return ts + startTimestamp;
     }
 
+    private static int paneYPosToEntryListIndex(double yPos, double yMax, int nbEntries) {
+        double ratio = yPos / yMax;
+        return (int) (ratio * nbEntries);
+    }
 }
