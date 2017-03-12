@@ -32,7 +32,7 @@ final class RenderToJson {
     private static final String STATE_NAME_KEY = "state"; //$NON-NLS-1$
     private static final String COLOR_KEY = "color"; //$NON-NLS-1$
 
-    private static final Path OUTPUT_FILE = Paths.get("/home/alexandre/json-output"); //$NON-NLS-1$
+    private static final Path OUTPUT_FILE = Paths.get("/home/yonni/json-output"); //$NON-NLS-1$
     static {
         try {
             if (Files.exists(OUTPUT_FILE)) {

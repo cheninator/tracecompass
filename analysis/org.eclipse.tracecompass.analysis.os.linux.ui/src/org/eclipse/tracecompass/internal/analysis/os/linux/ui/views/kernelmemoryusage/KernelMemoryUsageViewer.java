@@ -173,6 +173,7 @@ public class KernelMemoryUsageViewer extends TmfCommonXLineChartViewer {
             if (fSelectedThread != NOT_SELECTED) {
                 setSeries(fSelectedThread, selectedThreadValues);
             }
+            exportToJsonFile(xvalues, totalKernelMemoryValues);
             updateDisplay();
 
         } catch (TimeRangeException | StateSystemDisposedException | AttributeNotFoundException e) {

@@ -12,7 +12,14 @@
 
 package org.eclipse.tracecompass.tmf.ui.viewers.xycharts.linecharts;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -471,4 +478,30 @@ public abstract class TmfCommonXLineChartViewer extends TmfXYChartViewer {
         return super.isDirty() || (fDirty.get() != 0);
     }
 
+    protected void exportToJsonFile(double[] xvalue, double[]... yvalues) {
+
+        List<String> lines = new ArrayList<>();
+        int index = 1;
+        for(double[] yvalue : yvalues) {
+
+            String line = "{\"key\":\"" + index + "\",\"values\":[";
+            StringBuilder sb = new StringBuilder();
+            sb.append(line);
+
+            for(int i = 0; i < xvalue.length; ++i) {
+                sb.append("[" + xvalue[i] + "," + yvalue[i] + "],");
+            }
+            sb.append("]},");
+            lines.add(sb.toString());
+            index++;
+        }
+        String name = this.getName();
+        name = name.replace("/", "-");
+        Path file = Paths.get("/home/yonni/" + name + ".json");
+        try {
+            Files.write(file, lines, Charset.forName("UTF-8"));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
 }

@@ -40,6 +40,14 @@ import org.eclipse.tracecompass.tmf.ui.viewers.xycharts.linecharts.TmfCommonXLin
 
 import com.google.common.base.Joiner;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * CPU usage viewer with XY line chart. It displays the total CPU usage and that
  * of the threads selected in the CPU usage tree viewer.
@@ -210,12 +218,16 @@ public class CpuUsageXYViewer extends TmfCommonXLineChartViewer {
                     key[i] = (double) totalCpu / (double) (time - prevTime) * 100;
                     prevTime = time;
                 }
+
                 for (Entry<String, double[]> entry : fYValues.entrySet()) {
                     setSeries(entry.getKey(), entry.getValue());
                 }
                 if (monitor.isCanceled()) {
                     return;
                 }
+
+                double[] yvalues = fYValues.get("Total");
+                exportToJsonFile(xvalues, yvalues);
                 updateDisplay();
             }
         } catch (StateValueTypeException e) {

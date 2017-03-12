@@ -150,6 +150,7 @@ public class DisksIOActivityViewer extends TmfCommonXLineChartViewer {
                 if (monitor != null && monitor.isCanceled()) {
                     return;
                 }
+                exportToJsonFile(xvalues, yValuesRead, yValuesWritten);
                 updateDisplay();
             }
         }
